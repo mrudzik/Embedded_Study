@@ -21,6 +21,36 @@
 #define SPEED 500
 #define PAUSE 200
 
+
+
+
+#define BUTTON_PIN 0
+
+// void setup(){
+//   Serial.begin(115200);
+
+//   pinMode(LED_OUT, OUTPUT); 
+//   pinMode(BUTTON_PIN, INPUT);
+
+// }
+
+// void blink(){
+//   digitalWrite(LED_OUT, HIGH);
+//   delay(500);
+//   digitalWrite(LED_OUT, LOW);
+//   delay(500);
+// }
+
+// void loop(){
+//   bool state = digitalRead(BUTTON_PIN);
+//   if (!state) {
+//     blink();
+//   }
+//   Serial.printf("BUTTON STATE: %d\n", state);
+//   delay(20);
+// }
+
+
 // // put function declarations here:
 void lightUp(bool red1, bool red2, bool blue1, bool blue2, int waitTime, int pause);
 
