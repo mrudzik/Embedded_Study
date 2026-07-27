@@ -1,0 +1,16 @@
+Домашка Модуль 1_6
+
+
+Використав в якості схеми свою сигналку яку зробив на мініпроекті
+На фото, результати вимірювань. Похибка в районі 0.1-0.01 діапазону.
+
+Вот фрагмент логів
+
+ Raw Analog: 2904, Calculated Voltage: 2.340, Raw Milivolts: 2454 -> Difference = -0.114
+ Raw Analog: 2911, Calculated Voltage: 2.345, Raw Milivolts: 2470 -> Difference = -0.125
+ Raw Analog: 2917, Calculated Voltage: 2.350, Raw Milivolts: 2474 -> Difference = -0.124
+ Raw Analog: 2888, Calculated Voltage: 2.327, Raw Milivolts: 2441 -> Difference = -0.114
+ Raw Analog: 2683, Calculated Voltage: 2.162, Raw Milivolts: 2274 -> Difference = -0.112
+ Raw Analog: 637, Calculated Voltage: 0.513, Raw Milivolts: 459 -> Difference = 0.054
+
+

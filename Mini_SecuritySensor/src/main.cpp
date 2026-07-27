@@ -54,9 +54,11 @@ void checkPhotoR() {
     return;
 
   int raw = analogRead(PHOTO_R_PIN);
+  int rawMilivolts = analogReadMilliVolts(PHOTO_R_PIN);
   float volt = raw * 3.3 / 4096 ;
+  float voltageDifference = volt- (float)rawMilivolts*0.001;
 
-  Serial.printf("Raw: %d, Voltage: %.3f\n", raw, volt);
+  Serial.printf("Raw Analog: %d, Calculated Voltage: %.3f, Raw Milivolts: %d -> Difference = %.3f\n ", raw, volt, rawMilivolts, voltageDifference);
   if (raw < 2000)
     currentMode = MODE_ALARM;
 
