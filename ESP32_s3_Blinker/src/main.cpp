@@ -1,267 +1,228 @@
 #include <Arduino.h>
 
+// Підчистив файл, це його остання версія
 
+#pragma region Homework_2_1
 
+// Домашка 2.1
 
+// Мікроконтроллер видає 3.3 Вольта
+// Зелений світлодіод
+// Падіння 1.6-4.0 Вольта 
+//    — 7.7мА — резистор 220 Ом
+// Червоні світлодіоди
+// Падіння 1.5-2.0 Вольта
+//    — 7.7мА — резистор 220 Ом
+// Сині світлодіоди
+// Падіння 2.5-3.7 Вольта
+//    — 7мА — резистор 100 Ом
 
+#define CE_INT constexpr uint32_t
 
+CE_INT LED_OUT = 4; // Power display
+CE_INT LED_RED1 = 5;
+CE_INT LED_RED2 = 6;
+CE_INT LED_BLUE1 = 15;
+CE_INT LED_BLUE2 = 16;
+CE_INT BUTTON_PIN = 18;
 
+// CE_INT SPEED = 400;
+// CE_INT PAUSE = 200;
 
+volatile bool buttonPressed = false;
+enum LightModes { ON, MODE_1, MODE_2, MODE_3, OFF};
+LightModes previousLightMode = ON;
+LightModes currentLightMode = ON;
 
+constexpr uint8_t patternAmmount = 3;
+constexpr uint8_t patternLength = 10;
+constexpr uint8_t patternSize = 4; // DO NOT CHANGE (we only have 4 leds)
+constexpr bool blinkON[] = {1,1,1,1};
+constexpr bool blinkOFF[] = {0,0,0,0};
+constexpr bool blinkPatterns[patternAmmount][patternLength][patternSize] = {
+  { {1, 1, 0, 0},
+    {0, 0, 1, 1},
+    {1, 1, 0, 0},
+    {0, 0, 1, 1},
+    {1, 1, 0, 0},
+    {0, 0, 1, 1},
+    {1, 1, 1, 1},
+    {0, 0, 0, 0},
+    {1, 1, 1, 1},
+    {0, 0, 0, 0}},
 
+  { {1, 1, 0, 0},
+    {0, 0, 0, 0},
+    {1, 1, 0, 0},
+    {0, 0, 0, 0},
+    {0, 0, 1, 1},
+    {0, 0, 0, 0},
+    {0, 0, 1, 1},
+    {0, 0, 0, 0},
+    {1, 1, 1, 1},
+    {0, 0, 0, 0}},
 
-
-
-
-
-
-// #define ADC_PIN 4
-
-// void setup() {
-//   // pinMode(ADC_PIN, INPUT);
-//   Serial.begin(115200);
-//   analogReadResolution(12);
-//   analogSetPinAttenuation(ADC_PIN, ADC_11db);
-// }
-
-// void loop() {
-//   int raw = analogRead(ADC_PIN);
-//   float volt = raw * 3.3 / 4096 ;
-
-//   Serial.printf("Raw: %d, Voltage: %.3f\n", raw, volt);
-//   delay(500);
-// }
-
-#pragma region Homework_1_4
-
-// Домашка 1.4
-
-// // Урок з кнопками
-#define BUTTON_BOOT_PIN 0
-#define BUTTON_EXTERNAL_PIN 15
-#define LED_1 4
-#define LED_2 5
-
-const int debounceDelay = 50; // in miliseconds
-int blinkSpeed = 100;
-
-
-struct buttonData {
-  int buttonPin = -1;
-  bool currentState = false;
-  bool lastState = false;
-  unsigned long lastDebounceTime = 0;
-
-  void initButtonData(int newButtonPin){
-    buttonPin = newButtonPin;
-    currentState = digitalRead(buttonPin);
-    lastState = currentState;
-  }
-
-  bool checkStateChange() {
-    if (buttonPin < 0) return false; // Not initialized
-
-    int reading = digitalRead(buttonPin);
-    // Якщо змінився стан кнопки
-    if (reading != lastState) {
-      lastDebounceTime = millis(); // Оновлюєм час останньої зміни
-    }
-
-    // Якщо пройшло достатньо часу після зміни стану
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-      // Якщо стан змінився, оновлюємо поточний стан кнопки
-      if (reading != currentState) {
-        currentState = reading;
-
-        lastState = currentState;
-        return true; // State changed
-      }
-    }
-
-    lastState = reading;
-    return false; // State not changed
-  }
+  { {1, 0, 0, 0},
+    {0, 1, 0, 0},
+    {0, 0, 1, 0},
+    {0, 0, 0, 1},
+    {1, 1, 1, 1},
+    {0, 0, 0, 1},
+    {0, 0, 1, 0},
+    {0, 1, 0, 0},
+    {1, 0, 0, 0},
+    {1, 1, 1, 1}},
 };
 
-buttonData buttonBOOT;
-buttonData buttonEXTERNAL;
+
+// // put function declarations here:
+void lights();
+void lightsCheckChange();
+void lightUp(const bool patternRow[]);
+
+void interruptButtonPressed();
+
+void measureLoop();
 
 
-void setup(){
+void setup() {
   Serial.begin(115200);
 
-  pinMode(LED_1, OUTPUT); 
-  pinMode(LED_2, OUTPUT);
-  pinMode(BUTTON_BOOT_PIN, INPUT);
-  pinMode(BUTTON_EXTERNAL_PIN, INPUT);
 
-  buttonBOOT.initButtonData(BUTTON_BOOT_PIN);
-  buttonEXTERNAL.initButtonData(BUTTON_EXTERNAL_PIN);
+  pinMode(LED_OUT, OUTPUT); // Ініціюєм зелений, щоб показував чи працює схема
+  digitalWrite(LED_OUT, HIGH);
+
+  pinMode(LED_RED1, OUTPUT);
+  pinMode(LED_RED2, OUTPUT);
+  pinMode(LED_BLUE1, OUTPUT);
+  pinMode(LED_BLUE2, OUTPUT);
+
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), interruptButtonPressed, FALLING);
+}
+
+void loop() {
+  lightsCheckChange();
+  lights();
+
+  measureLoop();
+  // bool buttonState = digitalRead(BUTTON_PIN);
+  // // Serial.printf("Button State = %d \n", buttonState);
 
 }
 
 
-void checkActiveButtons(){
-  Serial.printf("Button states BOOT - %d, EXTERNAL - %d\n",buttonBOOT.currentState, buttonEXTERNAL.currentState);
 
-  if (!buttonBOOT.currentState && buttonEXTERNAL.currentState){ // Active only BOOT
-    Serial.printf("BOOT mode\n");
-    blinkSpeed = 2000;
-  } else if (buttonBOOT.currentState && !buttonEXTERNAL.currentState){ // Active only EXTERNAL
-    Serial.printf("EXTERNAL mode\n");
-    blinkSpeed = 200;
-  } else { // Active both
-    Serial.printf("BOTH mode\n");
-    blinkSpeed = 1000;
+
+void lightsCheckChange() {
+  if (!buttonPressed) // No need to change Lights
+    return;
+  // Button pressed, changing light mode
+  
+  if (currentLightMode == OFF){ // It is the final one
+    currentLightMode = ON; // Go to the start
   }
+  else {
+    currentLightMode = static_cast<LightModes>(static_cast<int>(currentLightMode) + 1);
+  }
+
+  buttonPressed = false; // Releasing button
+  
 }
 
-void blink(){
-  digitalWrite(LED_1, true);
-  digitalWrite(LED_2, false);
-  delay(blinkSpeed / 2);
-  digitalWrite(LED_1, false);
-  digitalWrite(LED_2, true);
-  delay(blinkSpeed / 2);
-}
+void lights(){
+  static const uint32_t speed = 400;
+  static uint32_t lastPatternShift = 0;
 
+  static uint8_t currentPatternPosition = 0;
+  static uint8_t currentPattern = 0;
+  uint32_t now = millis();
 
+  if (lastPatternShift + speed > now)
+    return; // Too soon to do pattern shift;
 
+  switch (currentLightMode)
+  {
+  case OFF:
+    lightUp(blinkOFF);
+    break;
+  case ON:
+    lightUp(blinkON);
+    break;
 
-
-void loop(){
-    
-
-    if (buttonBOOT.checkStateChange()){
-      if (!buttonBOOT.currentState)
-        checkActiveButtons();
+  default: // Some pattern mode
+    // Check if using different pattern
+    if (currentPattern != currentLightMode-1){ 
+      currentPattern = currentLightMode-1;
+      currentPatternPosition = 0;
     }
 
-    if (buttonEXTERNAL.checkStateChange()){
-      if (!buttonEXTERNAL.currentState)
-        checkActiveButtons();
-    }
+    lightUp(blinkPatterns[currentPattern][currentPatternPosition]);
+    // Serial.printf("\nCurrent pattern %d n pos %d",currentPattern, currentPatternPosition);
+    break;
+  }
+
+  // Doing pattern shift
+  lastPatternShift = now;
+  currentPatternPosition++;
+  if (currentPatternPosition >= patternLength) {
+    currentPatternPosition = 0;
+  }
+
+}
 
 
-
-  blink();
-//   // bool state = digitalRead(BUTTON_PIN);
-//   // if (!state) {
-//   //   blink();
-//   // }
-//   // Serial.printf("BUTTON STATE: %d\n", state);
-  delay(5);
+void lightUp(const bool patternRow[]){
+  digitalWrite(LED_RED1, patternRow[0]);
+  digitalWrite(LED_RED2, patternRow[1]);
+  digitalWrite(LED_BLUE1, patternRow[2]);
+  digitalWrite(LED_BLUE2, patternRow[3]);
 }
 
 
 
 
-#pragma endregion
-
-#pragma region Homework_1_3
-
-// Домашка 1.3
-
-// // Мікроконтроллер видає 3.3 Вольта
-// // Зелений світлодіод
-// // Падіння 1.6-4.0 Вольта 
-// //    — 7.7мА — резистор 220 Ом
-// #define LED_OUT 4 // Schematic functionality
-
-// // Червоні світлодіоди
-// // Падіння 1.5-2.0 Вольта
-// //    — 7.7мА — резистор 220 Ом
-// #define LED_RED1 5
-// #define LED_RED2 6
-
-// // Сині світлодіоди
-// // Падіння 2.5-3.7 Вольта
-// //    — 7мА — резистор 100 Ом
-// #define LED_BLUE1 15
-// #define LED_BLUE2 16
-
-// #define SPEED 500
-// #define PAUSE 200
 
 
-// // // put function declarations here:
-// void lightUp(bool red1, bool red2, bool blue1, bool blue2, int waitTime, int pause);
+void interruptButtonPressed(){
+  static const uint32_t buttonDebounceTime = 300;
+  static uint32_t lastTimeButtonPressed = 0;
 
-// void blinkPattern1(int speed);
-// void blinkPattern2(int speed);
-// void blinkPattern3(int speed);
+  // No need to do further checks 
+  // cuz we didnt release the button in main program
+  if (buttonPressed)
+    return; 
 
 
-// void setup() {
-//   pinMode(LED_OUT, OUTPUT); // Ініціюєм зелений, щоб показував чи працює схема
-//   digitalWrite(LED_OUT, HIGH);
-
-//   pinMode(LED_RED1, OUTPUT);
-//   pinMode(LED_RED2, OUTPUT);
-//   pinMode(LED_BLUE1, OUTPUT);
-//   pinMode(LED_BLUE2, OUTPUT);
-// }
-
-// void loop() {
-//   lightUp(0, 0, 0, 0, SPEED, 0);
+  uint32_t now = millis();
+  if (lastTimeButtonPressed + buttonDebounceTime < now)
+  { // Check debounce, and then trigger logic
+    // Serial.printf("\nButton pressed");
+    lastTimeButtonPressed = now;
+    buttonPressed = true;
+  } else {
+    // Serial.printf("\nButton DEBOUNCE TRIGGERED");
+  }
   
-//   blinkPattern1(SPEED);
-//   blinkPattern1(SPEED);
-//   blinkPattern1(SPEED);
-//   lightUp(0, 0, 0, 0, SPEED, 0);
+}
 
-//   blinkPattern2(SPEED);
-//   blinkPattern2(SPEED);
-//   blinkPattern2(SPEED);
-//   lightUp(0, 0, 0, 0, SPEED, 0);
+
+void measureLoop(){
+  static const uint32_t displayDelay = 1000;
+  static uint32_t lastDisplay = 0;
+  static uint32_t loops = 0;
+  uint32_t now = millis();
+
+  loops++; // Measuring loops
+
+  if (lastDisplay + displayDelay > now)
+    return;// Too soon to display
   
-//   blinkPattern3(SPEED);
-//   blinkPattern3(SPEED);
-//   blinkPattern3(SPEED);
-// }
+  Serial.printf("\nLPS = %d; Average exec time: %f ms", loops, ((float)(now - lastDisplay)/loops));
 
-
-
-
-// void lightUp(bool red1, bool red2, bool blue1, bool blue2, int waitTime, int pause){
-//   digitalWrite(LED_RED1, red1);
-//   digitalWrite(LED_RED2, red2);
-//   digitalWrite(LED_BLUE1, blue1);
-//   digitalWrite(LED_BLUE2, blue2);
-//   delay(waitTime);
-
-//   if (pause > 0) {
-//     digitalWrite(LED_RED1, LOW);
-//     digitalWrite(LED_RED2, LOW);
-//     digitalWrite(LED_BLUE1, LOW);
-//     digitalWrite(LED_BLUE2, LOW);
-//     delay(pause);
-//   }
-// }
-
-
-// void blinkPattern1(int speed){
-//   lightUp(1, 1, 0, 0, speed, PAUSE);
-//   lightUp(0, 0, 1, 1, speed, PAUSE);
-// }
-
-// void blinkPattern2(int speed){
-//   lightUp(1, 1, 0, 0, speed / 2, PAUSE);
-//   lightUp(1, 1, 0, 0, speed / 2, PAUSE);
-
-//   lightUp(0, 0, 1, 1, speed / 2, PAUSE);
-//   lightUp(0, 0, 1, 1, speed / 2, PAUSE);  
-// }
-
-// void blinkPattern3(int speed){
-//   lightUp(1, 0, 0, 0, speed, 0);
-//   lightUp(0, 1, 0, 0, speed, 0);
-//   lightUp(0, 0, 1, 0, speed, 0);
-//   lightUp(0, 0, 0, 1, speed, 0);
-//   lightUp(0, 0, 1, 0, speed, 0);
-//   lightUp(0, 1, 0, 0, speed, 0);
-  
-// }
+  lastDisplay = now;
+  loops = 0;
+}
 
 #pragma endregion
 
