@@ -1,0 +1,45 @@
+{
+	"folders": [
+		{
+			"name": "ESP32_s3_Blinker",
+			"path": "ESP32_s3_Blinker"
+		},
+		{
+			"name": "Mini_SecuritySensor",
+			"path": "Mini_SecuritySensor"
+		},
+		{
+			"name": "Tests_Lessons",
+			"path": "Tests_Lessons"
+		},
+		{
+			"name": "PWN_Motor",
+			"path": "_Homework_2_2/PWN_Motor"
+		},
+		{
+			"name": "Traffic_Lights",
+			"path": "Mini_TrafficLights/Traffic_Lights"
+		},
+		{
+			"name": "Debounce_Measure",
+			"path": "_Homework_2_4/Debounce_Measure"
+		},
+		{
+			"name": "Timed_Fan",
+			"path": "_Homework_2_5/Timed_Fan"
+		},
+		{
+			"name": "Analog_Reader",
+			"path": "_Homework_3_1/Analog_Reader"
+		},
+		{
+			"name": "Analog_Calibrate",
+			"path": "_Homework_3_2/Analog_Calibrate"
+		},
+		{
+			"name": "Melody_Player",
+			"path": "_Homework_3_4/Melody_Player"
+		}
+	],
+	"settings": {}
+}
