@@ -39,6 +39,14 @@
 		{
 			"name": "Melody_Player",
 			"path": "_Homework_3_4/Melody_Player"
+		},
+		{
+			"name": "Car_Controll",
+			"path": "../Embedded_Car/Car_Controll"
+		},
+		{
+			"name": "Debounce_IDF",
+			"path": "_Homework_2_6/Debounce_IDF"
 		}
 	],
 	"settings": {}

@@ -24,7 +24,6 @@ uint32_t lastTimePolled = 0;
 constexpr uint32_t pollDelay = 5;
 bool buttonPressed = false;
 
-// uint32_t press5 = 0; // 5 — Hardware debounce
 
 constexpr uint32_t logDelay = 100;
 
