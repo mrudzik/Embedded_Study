@@ -13,13 +13,14 @@ void setup() {
 
 void loop() {
   uint32_t now = millis();
-  if (now - t_prev >= 200) {          
+  if (now - t_prev >= 100) {          
     t_prev = now;
 
     int raw = analogRead(PIN_ADC);
     float v_naive = raw * VREF_NAIVE / 4095.0f;
     uint32_t mv   = analogReadMilliVolts(PIN_ADC);
 
+    Serial.printf("----------------------------------\n");
     Serial.printf("raw=%4d  naive=%.3f V  calib=%.3f V  delta=%+.0f mV\n",
                   raw, v_naive, mv / 1000.0f, v_naive * 1000.0f - (float)mv);
 
