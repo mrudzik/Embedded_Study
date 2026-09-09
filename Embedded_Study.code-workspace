@@ -47,6 +47,10 @@
 		{
 			"name": "Debounce_IDF",
 			"path": "_Homework_2_6/Debounce_IDF"
+		},
+		{
+			"name": "LDR_Light_for_IDF",
+			"path": "_Homework_3_2/LDR_Light_for_IDF"
 		}
 	],
 	"settings": {}
