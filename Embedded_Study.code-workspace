@@ -51,6 +51,10 @@
 		{
 			"name": "LDR_Light_for_IDF",
 			"path": "_Homework_3_2/LDR_Light_for_IDF"
+		},
+		{
+			"name": "PWM_Motor_IDF",
+			"path": "_Homework_3_3/PWM_Motor_IDF"
 		}
 	],
 	"settings": {}
