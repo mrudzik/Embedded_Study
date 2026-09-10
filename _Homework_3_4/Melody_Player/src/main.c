@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -14,17 +12,64 @@
 
 #define R 0
 
-#define G2   98
-#define A2  110
-#define B2  123
-#define C2  262
-#define D2  294
-#define E2  82
 
-#define D3  147
-#define E3  165
-#define G3  196
-#define A3  220
+/* ---------------------------------------------------------------- октава 0 */
+#define C0        16
+#define CS0       17
+#define D0        18
+#define DS0       19
+#define E0        21
+#define F0        22
+#define FS0       23
+#define G0        25
+#define GS0       26
+#define A0        28
+#define AS0       29
+#define B0        31
+ 
+/* ---------------------------------------------------------------- октава 1 */
+#define C1        33
+#define CS1       35
+#define D1        37
+#define DS1       39
+#define E1        41
+#define F1        44
+#define FS1       46
+#define G1        49
+#define GS1       52
+#define A1        55
+#define AS1       58
+#define B1        62
+ 
+/* ---------------------------------------------------------------- октава 2 */
+#define C2        65
+#define CS2       69
+#define D2        73
+#define DS2       78
+#define E2        82
+#define F2        87
+#define FS2       92
+#define G2        98
+#define GS2      104
+#define A2       110
+#define AS2      117
+#define B2       123
+ 
+/* ---------------------------------------------------------------- октава 3 */
+#define C3       131
+#define CS3      139
+#define D3       147
+#define DS3      156
+#define E3       165
+#define F3       175
+#define FS3      185
+#define G3       196
+#define GS3      208
+#define A3       220
+#define AS3      233
+#define B3       247
+
+/* ---------------------------------------------------------------- октава 4 */
 
 #define C4       262
 #define CS4      277
@@ -98,25 +143,44 @@ typedef struct {
 
 
 static const note_t melody[] = {
-    {E5,200},{B4,100},{C5,100},{D5,200},{C5,100},{B4,100},
-    {A4,200},{A4,100},{C5,100},{E5,200},{D5,100},{C5,100},
-    {B4,300},        {C5,100},{D5,200},{E5,200},
-    {C5,200},{A4,200},{A4,200},{R, 200},
- 
-    {D5,300},        {F5,100},{A5,200},{G5,100},{F5,100},
-    {E5,300},        {C5,100},{E5,200},{D5,100},{C5,100},
-    {B4,200},{B4,100},{C5,100},{D5,200},{E5,200},
-    {C5,200},{A4,200},{A4,200},{R, 200},
- 
-    {E5,400},{C5,400},
-    {D5,400},{B4,400},
-    {C5,400},{A4,400},
-    {GS4,400},{B4,200},{R,200},
- 
-    {E5,400},{C5,400},
-    {D5,400},{B4,400},
-    {C5,200},{E5,200},{A5,400},
-    {GS5,400},{R,400},
+    {E3,1},{E3,1},{E3,1},{G3,1},{E3,1},{E3,1},{AS3,1},{E3,1},
+    {E3,1},{E3,1},{E3,1},{G3,1},{AS3,1},{A3,1},{G3,1},{FS3,1},
+
+    {E3,1},{E3,1},{E3,1},{G3,1},{E3,1},{E3,1},{AS3,1},{E3,1},
+    {E3,2},{G3,2},{AS3,2},{B3,2},
+
+    {G3,1},{G3,1},{G3,1},{AS3,1},{G3,1},{G3,1},{CS4,1},{G3,1},
+    {FS3,1},{FS3,1},{FS3,1},{A3,1},{FS3,1},{FS3,1},{C4,1},{FS3,1},
+
+    {E3,1},{E3,1},{G3,1},{AS3,1},{B3,1},{AS3,1},{G3,1},{E3,1},
+    {E3,6},{R,2},
+
+    {R,20},
+
+    {D4,1},{D4,1},{D4,1},{A4,1},{D4,1},{D4,1},{AS4,1},{A4,1},
+    {D4,1},{D4,1},{D4,1},{A4,1},{C5,1},{AS4,1},{A4,1},{G4,1},
+
+    {F4,2},{E4,2},{D4,2},{CS4,2},
+    {D4,2},{F4,2},{A4,2},{D5,2},
+
+    {D5,1},{C5,1},{AS4,1},{A4,1},{G4,1},{F4,1},{E4,1},{D4,1},
+    {CS4,2},{D4,2},{CS4,2},{D4,2},
+
+    {D4,4},{R,4},
+
+    {R,20},
+
+    {E4,4},{R,1},{F4,3},{E4,4},{AS3,4},
+    {E4,4},{R,1},{G4,3},{FS4,4},{E4,4},
+
+    {C4,4},{B3,4},{AS3,4},{B3,4},
+    {E4,6},{DS4,2},{E4,8},
+
+    {A4,4},{GS4,4},{G4,4},{FS4,4},
+    {F4,6},{E4,2},{AS3,8},
+
+    {E4,8},{R,4},
+    {R,20},
 };
 #define MELODY_LEN (sizeof(melody) / sizeof(note_t))
 
@@ -158,8 +222,8 @@ static void tone_off(void)
 
 static void play_note(uint16_t freq, uint16_t duration)
 {
-    uint16_t play = duration  * 85 / 100 + 50;
-    uint16_t gap  = duration - play +50;
+    uint16_t play = duration  * 85 / 100;
+    uint16_t gap  = duration - play;
 
     if (freq == R) {
         tone_off();
@@ -178,7 +242,7 @@ void app_main(void)
 
     while (1) {
         for (int i = 0; i < MELODY_LEN; i++) {
-            play_note(melody[i].freq, melody[i].duration);
+            play_note(melody[i].freq, melody[i].duration*170);
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
