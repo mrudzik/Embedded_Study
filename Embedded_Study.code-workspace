@@ -55,6 +55,10 @@
 		{
 			"name": "PWM_Motor_IDF",
 			"path": "_Homework_3_3/PWM_Motor_IDF"
+		},
+		{
+			"name": "StartServo_IDF",
+			"path": "_Homework_3_5/StartServo_IDF"
 		}
 	],
 	"settings": {}
