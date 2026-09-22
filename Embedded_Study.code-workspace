@@ -59,6 +59,14 @@
 		{
 			"name": "StartServo_IDF",
 			"path": "_Homework_3_5/StartServo_IDF"
+		},
+		{
+			"name": "Safe_IDF",
+			"path": "Mini_Safe/Safe_IDF"
+		},
+		{
+			"name": "STM32_UART_practice",
+			"path": "_Homework_4_1/STM32_UART_practice"
 		}
 	],
 	"settings": {}
