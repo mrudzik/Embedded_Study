@@ -59,30 +59,11 @@ void app_main() {
 
 	uint32_t now = millis_rtos();
 
-	// Music
-	uint32_t timeToPlay = now;
-	int noteIndex = 0;
-	bool notePlaying = false;
+	
 	while(1)
 	{
 		now = millis_rtos();
-		if (noteIndex < MELODY_LEN && now >= timeToPlay) {
-			if (!notePlaying){
-				play_note(melody[noteIndex].freq, melody[noteIndex].duration);
-				timeToPlay = now + melody[noteIndex].duration;
-				noteIndex++;
-				notePlaying = true;
-				// ESP_LOGI("\nPlay note", "");
-			} else { // GAP
-				timeToPlay = now + 50;
-				notePlaying = false;
-				tone_off();
-				// ESP_LOGI("\nDisable note", "");
-			}
-        }
-		if (noteIndex >= MELODY_LEN) {
-			noteIndex = 0;
-		}
+		sound_engine(now);
 		
         // vTaskDelay(pdMS_TO_TICKS(10));
 
