@@ -7,13 +7,14 @@
 #include "driver/ledc.h"
 
 #include "../src/sound_notes.h"
+#include "../src/encoder.h"
 
 
 // PIN digit selection LEDs
-#define PIN_LED1 	GPIO_NUM_4
-#define PIN_LED2 	GPIO_NUM_5
-#define PIN_LED3 	GPIO_NUM_6
-#define PIN_LED4 	GPIO_NUM_7
+// #define PIN_LED1 	GPIO_NUM_4
+// #define PIN_LED2 	GPIO_NUM_5
+// #define PIN_LED3 	GPIO_NUM_6
+// #define PIN_LED4 	GPIO_NUM_7
 
 // Buzzer
 #define PIN_BUZZER				GPIO_NUM_18
@@ -46,25 +47,32 @@ uint32_t millis_rtos() {
 
 
 void app_main() {
-	init_pin_for_led(PIN_LED1);
-	init_pin_for_led(PIN_LED2);
-	init_pin_for_led(PIN_LED3);
-	init_pin_for_led(PIN_LED4);
+	// init_pin_for_led(PIN_LED1);
+	// init_pin_for_led(PIN_LED2);
+	// init_pin_for_led(PIN_LED3);
+	// init_pin_for_led(PIN_LED4);
 
 	init_buzzer(PIN_BUZZER);
 
 
 
-	bool blinkTest = false;
+	// bool blinkTest = false;
 
 	uint32_t now = millis_rtos();
 
+	// uint32_t test1_time = now + 2000;
+	// uint32_t test2_time = 0;//now + 4000;
+	// // uint32_t test3_time = now + 6000;
+	// bool playedFirst = false;
 	
+	play_sound(start_melody, MELODY_SIZE(start_melody));
+
 	while(1)
 	{
 		now = millis_rtos();
 		sound_engine(now);
 		
+		check_encoder();
         // vTaskDelay(pdMS_TO_TICKS(10));
 
 

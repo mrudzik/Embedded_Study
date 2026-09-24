@@ -19,7 +19,7 @@ enum {
     /* Октава 7 */  C7 = 2093, CS7 = 2217, D7 = 2349, DS7 = 2489, E7 = 2637, F7 = 2794, FS7 = 2960, G7 = 3136, GS7 = 3322, A7 = 3520, AS7 = 3729, B7 = 3951,
 
     // Пауза (якщо потрібна тиша у мелодії)
-    REST = 0 
+    REST = 0, END = -1
 };
 
 
@@ -29,29 +29,54 @@ typedef struct {
     uint16_t duration;  
 } note_t;
 
-static const note_t melody[] = {
-    {E3,200},{E3,200},{E3,200},{G3,200},{E3,200},{E3,200},{AS3,200},{E3,200},
-    {E3,200},{E3,200},{E3,200},{G3,200},{AS3,200},{A3,200},{G3,200},{FS3,200},
+static bool finishedPlaying = true;
+// typedef struct {
+//     note_t* soundArray;
+//     int size;
+// } melody_t;
 
-    {E3,200},{E3,200},{E3,200},{G3,200},{E3,200},{E3,200},{AS3,200},{E3,200},
-    {E3,400},{G3,400},{AS3,400},{B3,400},
 
-    {G3,200},{G3,200},{G3,200},{AS3,200},{G3,200},{G3,200},{CS4,200},{G3,200},
-    {FS3,200},{FS3,200},{FS3,200},{A3,200},{FS3,200},{FS3,200},{C4,200},{FS3,200},
+// static note_t melody[] = {
+//     {E3,200},{E3,200},{E3,200},{G3,200},{E3,200},{E3,200},{AS3,200},{E3,200},
+//     {E3,200},{E3,200},{E3,200},{G3,200},{AS3,200},{A3,200},{G3,200},{FS3,200},
 
-    {E3,200},{E3,200},{G3,200},{AS3,200},{B3,200},{AS3,200},{G3,200},{E3,200},
-    {E3,1200},{REST,400},
+//     {E3,200},{E3,200},{E3,200},{G3,200},{E3,200},{E3,200},{AS3,200},{E3,200},
+//     {E3,400},{G3,400},{AS3,400},{B3,400},
 
-    {REST,2000}
-};
+//     {G3,200},{G3,200},{G3,200},{AS3,200},{G3,200},{G3,200},{CS4,200},{G3,200},
+//     {FS3,200},{FS3,200},{FS3,200},{A3,200},{FS3,200},{FS3,200},{C4,200},{FS3,200},
 
-static note_t current_melody[] = {
+//     {E3,200},{E3,200},{G3,200},{AS3,200},{B3,200},{AS3,200},{G3,200},{E3,200},
+//     {E3,1200},{REST,400},
+
+//     {REST,2000}
+// };
+
+
+static note_t start_melody[] = {
     {C3,150}, {E3,150}, {G3,150}, {C4,150}, {REST,50},
-    {G3,200}, {C4,350}, {REST,100}
+    {G3,200}, {C4,350}, {REST,100}, {END,1}
+}; 
+
+static note_t next_sound[] = {
+    {C3,150}, {E3,150}, {G3,150}, {END,1}
 };
 
-#define MELODY_LEN (sizeof(current_melody) / sizeof(note_t))
+static note_t previous_sound[] = {
+    {G3,150}, {E3,150}, {C3,150}, {END,1}
+};
 
+static note_t* current_melody = start_melody;
+static int32_t current_melody_size = 0;
+
+ //[] = {
+//     {C3,150}, {E3,150}, {G3,150}, {C4,150}, {REST,50},
+//     {G3,200}, {C4,350}, {REST,100}
+// };
+
+
+//  #define MELODY_LEN (sizeof(*current_melody) / sizeof(note_t))
+#define MELODY_SIZE(melody) (sizeof(melody) / sizeof(note_t))
 
 static void init_buzzer(gpio_num_t pin_number)
 {
@@ -98,28 +123,50 @@ static void play_note(uint16_t freq)
     tone_on(freq);
 }
 
+
+static uint32_t timeToPlay = 0;
+static int noteIndex = 0;
+static bool notePlaying = false;
+
+static void play_sound(note_t* soundToPlay, uint32_t size){
+    timeToPlay = 0;
+	noteIndex = 0;
+	notePlaying = false;
+
+    current_melody = soundToPlay;
+    current_melody_size = size;
+
+    printf("SIZE = %ld\n", size);
+}
+
 static void sound_engine(uint32_t now) {
     // Music
-	static uint32_t timeToPlay = 0;
-	static int noteIndex = 0;
-	static bool notePlaying = false;
+    if (noteIndex < current_melody_size && now >= timeToPlay) {
+		if (!notePlaying){
+			play_note(current_melody[noteIndex].freq);
+			timeToPlay = now + current_melody[noteIndex].duration;
+			noteIndex++;
+			notePlaying = true;
+		} else { // GAP
+			timeToPlay = now + 50;
+			notePlaying = false;
+			tone_off();
+		}
+    }
 
+	if (noteIndex >= current_melody_size) {
+		// noteIndex = 0;
+        finishedPlaying = true;
+	}
 
-    if (noteIndex < MELODY_LEN && now >= timeToPlay) {
-			if (!notePlaying){
-				play_note(current_melody[noteIndex].freq);
-				timeToPlay = now + current_melody[noteIndex].duration;
-				noteIndex++;
-				notePlaying = true;
-			} else { // GAP
-				timeToPlay = now + 50;
-				notePlaying = false;
-				tone_off();
-			}
-        }
-		// if (noteIndex >= MELODY_LEN) {
-		// 	noteIndex = 0;
-		// }
+    // // Testing
+    // static bool isFirstTime = true;
+    // static uint32_t timeTest1 = 0;
+    // if (isFirstTime) {
+    //     isFirstTime = false;
+
+    // }
+    
 
 }
 

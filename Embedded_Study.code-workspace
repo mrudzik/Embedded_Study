@@ -67,6 +67,10 @@
 		{
 			"name": "STM32_UART_practice",
 			"path": "_Homework_4_1/STM32_UART_practice"
+		},
+		{
+			"name": "Encoder_Testing",
+			"path": "Mini_Safe/Encoder_Testing"
 		}
 	],
 	"settings": {}
