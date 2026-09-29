@@ -71,6 +71,10 @@
 		{
 			"name": "Encoder_Testing",
 			"path": "Mini_Safe/Encoder_Testing"
+		},
+		{
+			"name": "I2C_Scanner",
+			"path": "_Homework_4_2/I2C_Scanner"
 		}
 	],
 	"settings": {}

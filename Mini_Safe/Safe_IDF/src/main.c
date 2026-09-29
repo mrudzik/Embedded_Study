@@ -53,7 +53,7 @@ void app_main() {
 	// init_pin_for_led(PIN_LED4);
 
 	init_buzzer(PIN_BUZZER);
-
+	encoder_init();
 
 
 	// bool blinkTest = false;
@@ -71,7 +71,6 @@ void app_main() {
 	{
 		now = millis_rtos();
 		sound_engine(now);
-		
 		check_encoder();
         // vTaskDelay(pdMS_TO_TICKS(10));
 
@@ -84,5 +83,7 @@ void app_main() {
 		// blinkTest = !blinkTest;
 		// ESP_LOGI("\nLED_check", "");
 		// vTaskDelay(pdMS_TO_TICKS(1000));
+
+		vTaskDelay(pdMS_TO_TICKS(LOOP_PERIOD_MS));
 	}
 }

@@ -19,13 +19,10 @@
 #define DETENTS_PER_REV    20
 #define STEPS_PER_REV      (PULSES_PER_DETENT * DETENTS_PER_REV)  
 
-#define LOOP_PERIOD_MS     100
+#define LOOP_PERIOD_MS     10
 
 static const char *TAG = "ENC";
-
 static pcnt_unit_handle_t pcnt_unit = NULL;
-
-
 
 
 static int     last_count = 0;

@@ -58,13 +58,13 @@ static note_t start_melody[] = {
     {G3,200}, {C4,350}, {REST,100}, {END,1}
 }; 
 
-static note_t next_sound[] = {
-    {C3,150}, {E3,150}, {G3,150}, {END,1}
-};
+// static note_t next_sound[] = {
+//     {C3,150}, {E3,150}, {G3,150}, {END,1}
+// };
 
-static note_t previous_sound[] = {
-    {G3,150}, {E3,150}, {C3,150}, {END,1}
-};
+// static note_t previous_sound[] = {
+//     {G3,150}, {E3,150}, {C3,150}, {END,1}
+// };
 
 static note_t* current_melody = start_melody;
 static int32_t current_melody_size = 0;
