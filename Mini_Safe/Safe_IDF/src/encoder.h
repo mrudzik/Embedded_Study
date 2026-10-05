@@ -6,7 +6,7 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 
-#define ENC_A   GPIO_NUM_9
+#define ENC_A   GPIO_NUM_15
 #define ENC_B   GPIO_NUM_10
 #define ENC_SW  GPIO_NUM_11
 
