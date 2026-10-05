@@ -145,7 +145,7 @@ static void check_encoder(){
     sw_prev = sw;
 
 
-    vTaskDelay(pdMS_TO_TICKS(LOOP_PERIOD_MS));
+    // vTaskDelay(pdMS_TO_TICKS(LOOP_PERIOD_MS));
 }
 
 

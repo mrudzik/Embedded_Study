@@ -75,6 +75,10 @@
 		{
 			"name": "I2C_Scanner",
 			"path": "_Homework_4_2/I2C_Scanner"
+		},
+		{
+			"name": "I2C_Display",
+			"path": "_Homework_4_3/I2C_Display"
 		}
 	],
 	"settings": {}
