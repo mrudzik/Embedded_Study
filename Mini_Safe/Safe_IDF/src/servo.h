@@ -10,10 +10,10 @@
 
 
 
-#define SERVO_GPIO      18
-#define LEDC_TIMER      LEDC_TIMER_0
+#define SERVO_GPIO      17
+#define LEDC_TIMER      LEDC_TIMER_1
 #define LEDC_MODE       LEDC_LOW_SPEED_MODE
-#define LEDC_CHANNEL    LEDC_CHANNEL_0
+#define LEDC_CHANNEL    LEDC_CHANNEL_1
 #define LEDC_DUTY_RES   LEDC_TIMER_14_BIT
 
 #define SERVO_MAX_DUTY (1u<<14)
@@ -53,7 +53,7 @@ static void servo_set_us(uint32_t us){
 	ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
 	ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
 
-	ESP_LOGI("\nServo duty update", "");
+	// ESP_LOGI("\nServo duty update", "");
 }
 
 static uint32_t currentServoUs = 400;

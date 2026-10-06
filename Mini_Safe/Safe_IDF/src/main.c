@@ -96,23 +96,18 @@ void app_main() {
 	init_pin_for_led(PIN_LED3);
 	init_pin_for_led(PIN_LED4);
 
-	// init_buzzer(PIN_BUZZER);
-	// play_sound(start_melody, MELODY_SIZE(start_melody));
+	init_buzzer(PIN_BUZZER);
+	play_sound(start_melody, MELODY_SIZE(start_melody));
 
-	// encoder_init();
+	encoder_init();
 
 
 	servo_init();
 	servo_set_us(400);
 
 
-	// vTaskDelay(pdMS_TO_TICKS(1000));
-
-	// servo_set_us(1600);
-
-	// vTaskDelay(pdMS_TO_TICKS(1000));
-	// i2c_master_bus_handle_t bus = i2c_bus_init();
-    // oled_init(bus, OLED_ADDR);      
+	i2c_master_bus_handle_t bus = i2c_bus_init();
+    oled_init(bus, OLED_ADDR);      
 
 
 	
@@ -139,8 +134,8 @@ void app_main() {
 	while(1)
 	{
 		now = millis_rtos();
-		// sound_engine(now);
-		// check_encoder();
+		sound_engine(now);
+		check_encoder();
 		servo_target();
 
         // vTaskDelay(pdMS_TO_TICKS(10));
@@ -176,8 +171,12 @@ void app_main() {
 
 			if (blinkTest){
 				servo_target_set(400);
+
+				show_text("1234");
 			} else {
 				servo_target_set(2600);
+
+				show_text("0__0");
 			}
 
 			blinkTest = !blinkTest;
@@ -189,7 +188,7 @@ void app_main() {
 		// ESP_LOGI("\nLED_check", "");
 		
 
-		// show_text("1234");
+		
 
 		// vTaskDelay(pdMS_TO_TICKS(1000));
 		vTaskDelay(pdMS_TO_TICKS(LOOP_PERIOD_MS));
