@@ -10,6 +10,7 @@
 #include "sound_notes.h"
 #include "encoder.h"
 #include "ssd1306.h"
+#include "servo.h"
 
 // PIN digit selection LEDs
 #define PIN_LED1 	GPIO_NUM_4
@@ -18,7 +19,7 @@
 #define PIN_LED4 	GPIO_NUM_7
 
 // Buzzer
-#define PIN_BUZZER				GPIO_NUM_18
+#define PIN_BUZZER	GPIO_NUM_18
 
 
 // I2C
@@ -81,23 +82,44 @@ static void show_text(const char *str)
 }
 
 
+
+
+
+
+
+
+
+
 void app_main() {
 	init_pin_for_led(PIN_LED1);
 	init_pin_for_led(PIN_LED2);
 	init_pin_for_led(PIN_LED3);
 	init_pin_for_led(PIN_LED4);
 
-	init_buzzer(PIN_BUZZER);
-	play_sound(start_melody, MELODY_SIZE(start_melody));
+	// init_buzzer(PIN_BUZZER);
+	// play_sound(start_melody, MELODY_SIZE(start_melody));
 
-	encoder_init();
+	// encoder_init();
 
 
-	i2c_master_bus_handle_t bus = i2c_bus_init();
-    oled_init(bus, OLED_ADDR);      
+	servo_init();
+	servo_set_us(400);
+
+
+	// vTaskDelay(pdMS_TO_TICKS(1000));
+
+	// servo_set_us(1600);
+
+	// vTaskDelay(pdMS_TO_TICKS(1000));
+	// i2c_master_bus_handle_t bus = i2c_bus_init();
+    // oled_init(bus, OLED_ADDR);      
 
 
 	
+
+
+
+
 
 	uint32_t now = millis_rtos();
 
@@ -112,27 +134,62 @@ void app_main() {
 	bool blinkTest = false;
 	uint32_t blinkTime = now;
 	uint32_t blinkDelay = 1000;
+
+	int servoRotateIndex = 0;
 	while(1)
 	{
 		now = millis_rtos();
-		sound_engine(now);
-		check_encoder();
+		// sound_engine(now);
+		// check_encoder();
+		servo_target();
+
         // vTaskDelay(pdMS_TO_TICKS(10));
 
+		// for(int i = 0 ; i <= 2600; i+=100){
+		// 	servo_set_us(i);
+		// 	vTaskDelay(pdMS_TO_TICKS(150));
+		// }
+		// vTaskDelay(pdMS_TO_TICKS(1000));
+		
+		// for(int i = 2600 ; i >= 400; i-=100){
+		// 	servo_set_us(i);
+		// 	vTaskDelay(pdMS_TO_TICKS(150));
+		// }
+
+		
+
+		// if (blinkTest) {
+		// 	servo_set_us(servoRotateIndex);
+		// 	if (servoRotateIndex < 2600) servoRotateIndex += 150;
+		// } else {
+		// 	servo_set_us(servoRotateIndex);
+		// 	if (servoRotateIndex > 400) servoRotateIndex -= 150;
+
+		// }
 
 		if (now >= blinkTime){
 			gpio_set_level(PIN_LED1, blinkTest);
 			gpio_set_level(PIN_LED2, blinkTest);
 			gpio_set_level(PIN_LED3, blinkTest);
 			gpio_set_level(PIN_LED4, blinkTest);
+
+
+			if (blinkTest){
+				servo_target_set(400);
+			} else {
+				servo_target_set(2600);
+			}
+
 			blinkTest = !blinkTest;
 			blinkTime = now+blinkDelay;
 		}
+
+		
 		
 		// ESP_LOGI("\nLED_check", "");
 		
 
-		show_text("1234");
+		// show_text("1234");
 
 		// vTaskDelay(pdMS_TO_TICKS(1000));
 		vTaskDelay(pdMS_TO_TICKS(LOOP_PERIOD_MS));
