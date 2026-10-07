@@ -2,6 +2,7 @@
 #include <freertos/task.h>
 #include <esp_adc/adc_oneshot.h>
 #include <esp_log.h>
+#include <string.h>
 #include "sdkconfig.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
@@ -33,8 +34,7 @@
 #define TEXT_Y     ((OLED_H - 5 * TEXT_SCALE) / 2) 
 
 
-
-
+#pragma region Initializations
 
 
 void init_pin_for_led(gpio_num_t pin_number){
@@ -53,12 +53,6 @@ void init_pin_for_led(gpio_num_t pin_number){
 }
 
 
-// Get milliseconds using RTOS ticks
-uint32_t millis_rtos() {
-    return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-}
-
-
 static i2c_master_bus_handle_t i2c_bus_init(void)
 {
     i2c_master_bus_config_t bus_cfg = {
@@ -74,13 +68,232 @@ static i2c_master_bus_handle_t i2c_bus_init(void)
     return bus;
 }
 
-static void show_text(const char *str)
+
+void all_init(){
+	// Blinking LEDs 
+	init_pin_for_led(PIN_LED1);
+	init_pin_for_led(PIN_LED2);
+	init_pin_for_led(PIN_LED3);
+	init_pin_for_led(PIN_LED4);
+	// Sound stuff
+	init_buzzer(PIN_BUZZER);
+	play_sound(start_melody, MELODY_SIZE(start_melody));
+	// Encoder
+	encoder_init();
+	// Servomotor
+	servo_init();
+	servo_set_us(400);
+
+	// I2C Bus
+	i2c_master_bus_handle_t bus = i2c_bus_init();
+	// Display that powered by I2C
+    oled_init(bus, OLED_ADDR);
+}
+
+#pragma endregion
+
+
+
+
+
+#pragma region Misc
+
+// Get milliseconds using RTOS ticks
+uint32_t millis_rtos() {
+    return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+}
+
+static void show_text(const char *str, uint32_t textScale)
 {
     fb_clear();
-    fb_text(TEXT_X, TEXT_Y, str, TEXT_SCALE);
+    fb_text(TEXT_X, TEXT_Y, str, textScale);
     oled_flush();
 }
 
+static void set_led_light(uint32_t num, bool light){
+	switch (num)
+	{
+	case 0:
+		gpio_set_level(PIN_LED1, light);
+		break;
+	case 1:
+		gpio_set_level(PIN_LED2, light);
+		break;
+	case 2:
+		gpio_set_level(PIN_LED3, light);
+		break;
+	case 3:
+		gpio_set_level(PIN_LED4, light);
+		break;
+	
+	default:
+		break;
+	}
+}
+
+static void set_all_led_light(bool light) {
+	gpio_set_level(PIN_LED1, light);
+	gpio_set_level(PIN_LED2, light);
+	gpio_set_level(PIN_LED3, light);
+	gpio_set_level(PIN_LED4, light);
+}
+
+
+static const uint32_t ENCODER_DOUBLEPRESS_TIME = 200;
+static const uint32_t ENCODER_DEBOUNCE_TIME = 20;
+
+static uint32_t lastPressedEncoderTime = 0;
+
+static bool isDoublePress = false;
+
+static void check_double_press(uint32_t now){
+	if (encoder_pressed) {
+		if (now < lastPressedEncoderTime + ENCODER_DOUBLEPRESS_TIME &&
+			now > lastPressedEncoderTime + ENCODER_DEBOUNCE_TIME){
+			isDoublePress = true;
+		}
+		lastPressedEncoderTime = now;
+	}
+}
+
+
+
+#pragma endregion
+
+
+
+
+
+#pragma region Control_Modes
+
+enum controlModes {
+	AWAIT, SELECTION, WRONG, CORRECT
+};
+
+static enum controlModes mode = AWAIT;
+static bool initSelection = false;
+
+static const uint32_t SELECTION_BLINK_TIME = 400;
+
+
+static char correctCombination[5] = "6769";
+
+void set_control(enum controlModes toSet) {
+
+	switch (toSet)
+	{
+	case SELECTION:
+		gpio_set_level(PIN_LED1, false);
+		gpio_set_level(PIN_LED2, false);
+		gpio_set_level(PIN_LED3, false);
+		gpio_set_level(PIN_LED4, false);
+
+		servo_target_set(400);
+		show_text("0000", TEXT_SCALE);
+
+		initSelection = true;
+		break;
+	case WRONG:
+
+		break;
+	case CORRECT:
+
+		break;
+
+	default:
+		break;
+	}
+
+	mode = toSet;
+}
+
+
+void mode_await(uint32_t now) {
+	static bool blinkTest = false;
+	static uint32_t blinkTime = 0;
+	static const uint32_t blinkDelay = 1000;
+
+
+	if (now >= blinkTime){
+		gpio_set_level(PIN_LED1, blinkTest);
+		gpio_set_level(PIN_LED2, blinkTest);
+		gpio_set_level(PIN_LED3, blinkTest);
+		gpio_set_level(PIN_LED4, blinkTest);
+
+		if (blinkTest){
+			servo_target_set(400);
+			show_text("1234", TEXT_SCALE);
+		} else {
+			servo_target_set(2600);
+			show_text("-:0:-", TEXT_SCALE - 1);
+		}
+
+		blinkTest = !blinkTest;
+		blinkTime = now+blinkDelay;
+	}
+
+	if (encoder_pressed)
+		set_control(SELECTION);
+}
+
+
+
+void mode_selection(uint32_t now) {
+	static uint8_t selectedDigit = 0;
+	static bool isBlinking = false;
+	static uint32_t lastTimeBlink = 0;
+	static char combination[5] = "0000";
+	static char comToShow[5];
+
+	
+
+	// if (initSelection) {
+	// 	initSelection = false;
+	// }
+
+	if (now > lastTimeBlink + SELECTION_BLINK_TIME) 
+	{ // Blinking Timer
+		lastTimeBlink = now;
+		isBlinking = !isBlinking;
+	}
+
+	// LED blink on board
+	set_all_led_light(false);	
+	set_led_light(selectedDigit, isBlinking);
+
+	// Digit blink on display
+	strcpy(comToShow, combination);
+	if (!isBlinking){
+		comToShow[selectedDigit] = '_';
+	}
+	show_text(comToShow, TEXT_SCALE);
+	
+	check_double_press(now);
+	if (encoder_pressed) {
+		if (isDoublePress){
+			isDoublePress = false;
+			if (strcmp(combination, correctCombination) == 0) {
+				set_control(CORRECT);
+			} else {
+				set_control(WRONG);
+			}
+		} else {
+			selectedDigit++;
+			if (selectedDigit >= 4) 
+				selectedDigit = 0;
+		}
+	}
+}
+
+void mode_wrong(uint32_t now) {
+	
+}
+
+void mode_correct(uint32_t now) {
+	
+}
+
+#pragma endregion
 
 
 
@@ -91,46 +304,14 @@ static void show_text(const char *str)
 
 
 void app_main() {
-	init_pin_for_led(PIN_LED1);
-	init_pin_for_led(PIN_LED2);
-	init_pin_for_led(PIN_LED3);
-	init_pin_for_led(PIN_LED4);
 
-	init_buzzer(PIN_BUZZER);
-	play_sound(start_melody, MELODY_SIZE(start_melody));
-
-	encoder_init();
-
-
-	servo_init();
-	servo_set_us(400);
-
-
-	i2c_master_bus_handle_t bus = i2c_bus_init();
-    oled_init(bus, OLED_ADDR);      
-
-
-	
-
-
-
-
+	all_init();
 
 	uint32_t now = millis_rtos();
-
-	// uint32_t test1_time = now + 2000;
-	// uint32_t test2_time = 0;//now + 4000;
-	// // uint32_t test3_time = now + 6000;
-	// bool playedFirst = false;
 	
 	
 
-
-	bool blinkTest = false;
-	uint32_t blinkTime = now;
-	uint32_t blinkDelay = 1000;
-
-	int servoRotateIndex = 0;
+	
 	while(1)
 	{
 		now = millis_rtos();
@@ -138,59 +319,34 @@ void app_main() {
 		check_encoder();
 		servo_target();
 
-        // vTaskDelay(pdMS_TO_TICKS(10));
 
-		// for(int i = 0 ; i <= 2600; i+=100){
-		// 	servo_set_us(i);
-		// 	vTaskDelay(pdMS_TO_TICKS(150));
-		// }
-		// vTaskDelay(pdMS_TO_TICKS(1000));
+        
+		switch (mode)
+		{
+		case AWAIT:
+			mode_await(now);
+			break;
 		
-		// for(int i = 2600 ; i >= 400; i-=100){
-		// 	servo_set_us(i);
-		// 	vTaskDelay(pdMS_TO_TICKS(150));
-		// }
+		case SELECTION:
+			mode_selection(now);
+			break;
 
-		
+		case WRONG:
+			mode_wrong(now);
+			break;
+		case CORRECT:
+			mode_correct(now);
+			break;
 
-		// if (blinkTest) {
-		// 	servo_set_us(servoRotateIndex);
-		// 	if (servoRotateIndex < 2600) servoRotateIndex += 150;
-		// } else {
-		// 	servo_set_us(servoRotateIndex);
-		// 	if (servoRotateIndex > 400) servoRotateIndex -= 150;
-
-		// }
-
-		if (now >= blinkTime){
-			gpio_set_level(PIN_LED1, blinkTest);
-			gpio_set_level(PIN_LED2, blinkTest);
-			gpio_set_level(PIN_LED3, blinkTest);
-			gpio_set_level(PIN_LED4, blinkTest);
-
-
-			if (blinkTest){
-				servo_target_set(400);
-
-				show_text("1234");
-			} else {
-				servo_target_set(2600);
-
-				show_text("0__0");
-			}
-
-			blinkTest = !blinkTest;
-			blinkTime = now+blinkDelay;
+		default:
+			break;
 		}
+		
+		
 
 		
 		
-		// ESP_LOGI("\nLED_check", "");
 		
-
-		
-
-		// vTaskDelay(pdMS_TO_TICKS(1000));
 		vTaskDelay(pdMS_TO_TICKS(LOOP_PERIOD_MS));
 	}
 }

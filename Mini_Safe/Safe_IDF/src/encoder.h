@@ -29,7 +29,7 @@ static int     last_count = 0;
 static int64_t last_us    = 0;
 static int     sw_prev    = 1;
 
-
+static bool encoder_pressed = false;
 
 static void encoder_init(void)
 {
@@ -140,22 +140,12 @@ static void check_encoder(){
     if (sw == 0 && sw_prev == 1) {
         ESP_ERROR_CHECK(pcnt_unit_clear_count(pcnt_unit));
         last_count = 0;
-        ESP_LOGW(TAG, "нуль встановлено");
+        encoder_pressed = true;
+        ESP_LOGW(TAG, "Нажав на енкодер");
+    } else {
+        encoder_pressed = false;
+        // ESP_LOGW(TAG, "Відпустив енкодер");
     }
     sw_prev = sw;
 
-
-    // vTaskDelay(pdMS_TO_TICKS(LOOP_PERIOD_MS));
 }
-
-
-// void app_main(void)
-// {
-//     encoder_init();
-
-    
-
-//     while (1) {
-       
-//     }
-// }
