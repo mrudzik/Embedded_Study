@@ -25,10 +25,10 @@ static const char *TAG = "ENC";
 static pcnt_unit_handle_t pcnt_unit = NULL;
 
 
-static int     last_count = 0;
-static int64_t last_us    = 0;
-static int     sw_prev    = 1;
-
+static int      last_count = 0;
+static int64_t  last_us    = 0;
+static int      sw_prev    = 1;
+static int      encoder_click   = 0;
 static bool encoder_pressed = false;
 
 static void encoder_init(void)
@@ -100,6 +100,11 @@ static void encoder_init(void)
 }
 
 
+static void encoder_clear_cout(){
+    ESP_ERROR_CHECK(pcnt_unit_clear_count(pcnt_unit));
+    last_count = 0;
+}
+
 
 static void check_encoder(){
  	int count = 0;
@@ -123,12 +128,12 @@ static void check_encoder(){
 
     const char *dir = (delta > 0) ? "CW " : (delta < 0) ? "CCW" : "-  ";
 
-
     if (delta != 0) {
+        encoder_click = count / PULSES_PER_DETENT;
         ESP_LOGI(TAG, "%s кроки=%6d  клац=%5d  кут=%6.1f  RPM=%7.1f",
                  dir,
 	             count,
-                 count / PULSES_PER_DETENT,
+                 encoder_click,
                  angle,
                  rpm);
     }
@@ -138,10 +143,9 @@ static void check_encoder(){
 
     int sw = gpio_get_level(ENC_SW);
     if (sw == 0 && sw_prev == 1) {
-        ESP_ERROR_CHECK(pcnt_unit_clear_count(pcnt_unit));
-        last_count = 0;
+        encoder_clear_cout();
         encoder_pressed = true;
-        ESP_LOGW(TAG, "Нажав на енкодер");
+        // ESP_LOGW(TAG, "Нажав на енкодер");
     } else {
         encoder_pressed = false;
         // ESP_LOGW(TAG, "Відпустив енкодер");

@@ -78,6 +78,8 @@ void all_init(){
 	// Sound stuff
 	init_buzzer(PIN_BUZZER);
 	play_sound(start_melody, MELODY_SIZE(start_melody));
+	// play_sound(win_melody, MELODY_SIZE(win_melody));
+
 	// Encoder
 	encoder_init();
 	// Servomotor
@@ -102,6 +104,8 @@ void all_init(){
 uint32_t millis_rtos() {
     return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
 }
+
+
 
 static void show_text(const char *str, uint32_t textScale)
 {
@@ -139,12 +143,11 @@ static void set_all_led_light(bool light) {
 }
 
 
-static const uint32_t ENCODER_DOUBLEPRESS_TIME = 200;
+static const uint32_t ENCODER_DOUBLEPRESS_TIME = 300;
 static const uint32_t ENCODER_DEBOUNCE_TIME = 20;
-
 static uint32_t lastPressedEncoderTime = 0;
-
 static bool isDoublePress = false;
+static uint32_t lastRecordedClick = 0;
 
 static void check_double_press(uint32_t now){
 	if (encoder_pressed) {
@@ -167,44 +170,64 @@ static void check_double_press(uint32_t now){
 #pragma region Control_Modes
 
 enum controlModes {
-	AWAIT, SELECTION, WRONG, CORRECT
+	AWAIT, SELECTION, WRONG, CORRECT, ALARM
 };
 
 static enum controlModes mode = AWAIT;
 static bool initSelection = false;
+static bool initWrong = false;
 
 static const uint32_t SELECTION_BLINK_TIME = 400;
+static const uint32_t WRONG_BLINK_TIME = 200;
+static const uint32_t WRONG_SHOW_TIME = 4000;
+static const uint32_t WIN_BLINK_TIME = 100;
 
+static const uint8_t MAX_ATTEMPT_AMMOUNT = 4;
 
 static char correctCombination[5] = "6769";
+static int8_t attemptsLeft = MAX_ATTEMPT_AMMOUNT;
 
 void set_control(enum controlModes toSet) {
 
+	mode = toSet;
 	switch (toSet)
 	{
 	case SELECTION:
-		gpio_set_level(PIN_LED1, false);
-		gpio_set_level(PIN_LED2, false);
-		gpio_set_level(PIN_LED3, false);
-		gpio_set_level(PIN_LED4, false);
-
-		servo_target_set(400);
+		set_all_led_light(false);
+		servo_target_set(2600);
 		show_text("0000", TEXT_SCALE);
 
 		initSelection = true;
 		break;
+
 	case WRONG:
-
+		attemptsLeft--;
+		if (attemptsLeft <= 0){
+			set_control(ALARM);
+			break;
+		}
+		play_sound(wrongCode_melody, MELODY_SIZE(wrongCode_melody));
+		initWrong = true;
 		break;
+
 	case CORRECT:
+		set_all_led_light(true);
 
+		play_sound(win_melody, MELODY_SIZE(win_melody));
+		servo_target_set(1500);
 		break;
+	
+	case ALARM:
+		set_all_led_light(true);
+		show_text("----", TEXT_SCALE);
 
+		play_sound(alarm_melody, MELODY_SIZE(alarm_melody));
+		break;
 	default:
 		break;
 	}
 
-	mode = toSet;
+	
 }
 
 
@@ -212,6 +235,10 @@ void mode_await(uint32_t now) {
 	static bool blinkTest = false;
 	static uint32_t blinkTime = 0;
 	static const uint32_t blinkDelay = 1000;
+
+	// static uint32_t servoCatchTime = 0;
+
+	servo_target_set(2600);
 
 
 	if (now >= blinkTime){
@@ -221,10 +248,10 @@ void mode_await(uint32_t now) {
 		gpio_set_level(PIN_LED4, blinkTest);
 
 		if (blinkTest){
-			servo_target_set(400);
+			// servo_target_set(400);
 			show_text("1234", TEXT_SCALE);
 		} else {
-			servo_target_set(2600);
+			// servo_target_set(2600);
 			show_text("-:0:-", TEXT_SCALE - 1);
 		}
 
@@ -247,15 +274,60 @@ void mode_selection(uint32_t now) {
 
 	
 
-	// if (initSelection) {
-	// 	initSelection = false;
-	// }
+	if (initSelection) {
+		initSelection = false;
+		selectedDigit = 0;
+	}
 
 	if (now > lastTimeBlink + SELECTION_BLINK_TIME) 
 	{ // Blinking Timer
 		lastTimeBlink = now;
 		isBlinking = !isBlinking;
 	}
+
+	
+	
+
+	// Encoder Press
+	check_double_press(now);
+	if (encoder_pressed) {
+		if (isDoublePress){
+			isDoublePress = false;
+			if (strcmp(combination, correctCombination) == 0) {
+				set_control(CORRECT);
+			} else {
+				set_control(WRONG);
+			}
+		} else {
+			lastRecordedClick = 0;
+			encoder_click = 0;
+
+			selectedDigit++;
+			if (selectedDigit >= 4) 
+				selectedDigit = 0;
+		}
+	}
+
+	// Encoder Roll
+	if (encoder_click != lastRecordedClick){
+		combination[selectedDigit] += encoder_click - lastRecordedClick;
+		lastRecordedClick = encoder_click;
+		
+		// Reset blink to true
+		lastTimeBlink = now;
+		isBlinking = true;
+
+		if (combination[selectedDigit] > 57){
+			combination[selectedDigit] -= 10;
+		} else if (combination[selectedDigit] < 48) {
+			combination[selectedDigit] += 10;
+		}
+	}
+
+
+
+
+
 
 	// LED blink on board
 	set_all_led_light(false);	
@@ -267,30 +339,85 @@ void mode_selection(uint32_t now) {
 		comToShow[selectedDigit] = '_';
 	}
 	show_text(comToShow, TEXT_SCALE);
-	
-	check_double_press(now);
-	if (encoder_pressed) {
-		if (isDoublePress){
-			isDoublePress = false;
-			if (strcmp(combination, correctCombination) == 0) {
-				set_control(CORRECT);
-			} else {
-				set_control(WRONG);
-			}
-		} else {
-			selectedDigit++;
-			if (selectedDigit >= 4) 
-				selectedDigit = 0;
-		}
-	}
 }
 
 void mode_wrong(uint32_t now) {
+	static bool isBlinking = false;
+	static uint32_t lastTimeBlink = 0;
+	static char resultMsg[6] = "     ";
+
+	static uint32_t timeModeStarted = 0;
+
+	if (initWrong){
+		initWrong = false;
+		timeModeStarted = now;
+	}
+
+	if (now > lastTimeBlink + WRONG_BLINK_TIME){
+		isBlinking = !isBlinking;
+		lastTimeBlink = now;
+
+		if (isBlinking){
+			strcpy(resultMsg, "-: :-");
+		} else {
+			strcpy(resultMsg, "     ");
+		}
+		resultMsg[2] = attemptsLeft + 48;
+		set_all_led_light(isBlinking);
+		if (attemptsLeft < 4) set_led_light(3, false);
+		if (attemptsLeft < 3) set_led_light(2, false);
+		if (attemptsLeft < 2) set_led_light(1, false);
+		show_text(resultMsg, TEXT_SCALE - 1);
+	}
+
+
+	if (now > timeModeStarted + WRONG_SHOW_TIME) {
+		set_control(SELECTION);
+	}
+
 	
+
 }
 
 void mode_correct(uint32_t now) {
-	
+	static bool isBlinking = false;
+	static uint32_t lastTimeBlink = 0;
+	static uint8_t currLED = 0;
+
+	if (now > lastTimeBlink + WIN_BLINK_TIME) {
+		isBlinking = !isBlinking;
+		lastTimeBlink = now;
+
+		set_all_led_light(false);
+		if (isBlinking){
+			set_led_light(currLED, true);
+		} else {
+			currLED++;
+			if (currLED >= 4) currLED = 0;
+		}
+
+		show_text("--------", TEXT_SCALE - 4);
+	}
+
+	check_double_press(now);
+	if (isDoublePress) {
+		isDoublePress = false;
+		attemptsLeft = MAX_ATTEMPT_AMMOUNT;
+		set_control(SELECTION);
+	}
+}
+
+void mode_alarm(uint32_t now) {
+	static bool isBlinking = false;
+	static uint32_t lastTimeBlink = 0;
+
+	if (now > lastTimeBlink + WRONG_BLINK_TIME){
+		isBlinking = !isBlinking;
+		lastTimeBlink = now;
+
+		set_all_led_light(isBlinking);
+		show_text("--------", TEXT_SCALE - 4);
+	}
 }
 
 #pragma endregion
@@ -337,7 +464,9 @@ void app_main() {
 		case CORRECT:
 			mode_correct(now);
 			break;
-
+		case ALARM:
+			mode_alarm(now);
+			break;
 		default:
 			break;
 		}
