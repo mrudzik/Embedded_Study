@@ -79,6 +79,10 @@
 		{
 			"name": "I2C_Display",
 			"path": "_Homework_4_3/I2C_Display"
+		},
+		{
+			"name": "stm32_platformio_test",
+			"path": "_Homework_4_1/stm32_platformio_test"
 		}
 	],
 	"settings": {}
