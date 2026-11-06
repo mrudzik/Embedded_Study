@@ -42,7 +42,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+volatile uint32_t counter = 0;
+volatile uint32_t delay_ms = 500;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
