@@ -147,7 +147,9 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  uint32_t current_time = HAL_GetTick();
+  uint32_t lastTimePressed = 0;
+  uint32_t debounce_delay = 500;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -159,8 +161,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART2_UART_Init();
   MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
    led_set(0);
    log_printf("\r\n[STM] boot. link USART2 9600 8N1 (PA2/PA3), log USART1 115200\r\n");
@@ -172,6 +174,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  current_time = HAL_GetTick();
+
 	  while (rb_tail != rb_head) {
 	        char c = (char)rb[rb_tail];
 	        rb_tail = (rb_tail + 1) % RB_SIZE;
@@ -193,6 +197,18 @@ int main(void)
 	        log_printf("[STM] UART error #%lu (baud/parity mismatch? noise?)\r\n",
 	                   (unsigned long)last_errors);
 	      }
+
+
+	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET) {
+		  if (current_time - lastTimePressed > debounce_delay) {
+			  lastTimePressed = current_time;
+
+
+//			  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+			  link_send("ESP_LIGHT\n");
+			  log_printf("[STM] TX -> ESP_LIGHT\r\n");
+		  }
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -200,6 +216,7 @@ int main(void)
   }
   /* USER CODE END 3 */
 }
+
 /**
   * @brief System Clock Configuration
   * @retval None

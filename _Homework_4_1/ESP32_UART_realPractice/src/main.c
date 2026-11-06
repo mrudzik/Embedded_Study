@@ -7,6 +7,8 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 
+
+
 #define LINK_UART      UART_NUM_1
 #define LINK_TX_PIN    17
 #define LINK_RX_PIN    18
@@ -16,6 +18,9 @@
 #define BTN_PIN        GPIO_NUM_0
 #define ACK_TIMEOUT_MS 200
 #define MAX_RETRIES    3
+
+#define MY_LED_GPIO   GPIO_NUM_4  
+bool led_state = false;
 
 static const char *TAG = "LINK";
 
@@ -35,6 +40,14 @@ static void link_init(void)
                                  UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     gpio_set_pull_mode(LINK_RX_PIN, GPIO_PULLUP_ONLY);
 }
+
+static void init_led() {
+    gpio_reset_pin(MY_LED_GPIO);
+    gpio_set_direction(MY_LED_GPIO, GPIO_MODE_OUTPUT);
+
+
+}
+
 
 static bool read_line(char *buf, size_t len, int timeout_ms)
 {
@@ -74,9 +87,28 @@ static bool send_cmd(const char *cmd)
     return false;
 }
 
+static bool read_cmd(){
+    char rx[32];
+
+    if (read_line(rx, sizeof rx, ACK_TIMEOUT_MS) == true) {
+        ESP_LOGI(TAG, "RX <- %s", rx);
+        if (strcmp(rx, "ESP_LIGHT\n")){
+            ESP_LOGI(TAG, "Turning lights");
+            led_state = !led_state;
+            gpio_set_level(MY_LED_GPIO, led_state);
+            
+        }
+        return true;
+    }
+    // ESP_LOGW(TAG, "NO ACK (отримано: '%s')", rx);
+    return false;
+}
+
 void app_main(void)
 {
     link_init();
+    init_led();
+    
 
     gpio_config_t btn = {
         .pin_bit_mask = 1ULL << BTN_PIN,
@@ -104,6 +136,8 @@ void app_main(void)
                 }
             }
         }
+
+        read_cmd();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
