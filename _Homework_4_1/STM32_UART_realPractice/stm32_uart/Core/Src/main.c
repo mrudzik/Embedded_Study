@@ -23,7 +23,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,7 +46,17 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+#define RB_SIZE 64
+static volatile uint8_t  rb[RB_SIZE];
+static volatile uint16_t rb_head = 0;
+static volatile uint16_t rb_tail = 0;
+static uint8_t           rx_byte;
 
+static volatile uint32_t link_errors = 0;
+static volatile uint32_t rb_overflow = 0;
+
+static char    line[32];
+static uint8_t line_len = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -55,7 +67,67 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static void log_printf(const char *fmt, ...)
+{
+  char buf[96];
+  va_list ap;
+  va_start(ap, fmt);
+  int n = vsnprintf(buf, sizeof buf, fmt, ap);
+  va_end(ap);
+  if (n <= 0) return;
+  if (n > (int)sizeof buf - 1) n = sizeof buf - 1;
+  HAL_UART_Transmit(&huart1, (uint8_t *)buf, (uint16_t)n, 50);
+}
 
+static void link_send(const char *s)
+{
+  HAL_UART_Transmit(&huart2, (uint8_t *)s, (uint16_t)strlen(s), 50);
+}
+
+static void led_set(int on)
+{
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, on ? GPIO_PIN_RESET : GPIO_PIN_SET);
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART2) {
+    uint16_t next = (rb_head + 1) % RB_SIZE;
+    if (next != rb_tail) {
+      rb[rb_head] = rx_byte;
+      rb_head = next;
+    } else {
+      rb_overflow++;
+    }
+    HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
+  }
+}
+
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART2) {
+    link_errors++;
+    __HAL_UART_CLEAR_OREFLAG(huart);
+    HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
+  }
+}
+
+static void handle_command(const char *cmd)
+{
+  if (strcmp(cmd, "ON") == 0) {
+    led_set(1);
+    link_send("ACK ON\n");
+    log_printf("[STM] RX 'ON'  -> LED ON\r\n");
+  } else if (strcmp(cmd, "OFF") == 0) {
+    led_set(0);
+    link_send("ACK OFF\n");
+    log_printf("[STM] RX 'OFF' -> LED OFF\r\n");
+  } else if (cmd[0] != '\0') {
+    link_send("ERR\n");
+    log_printf("[STM] unknown cmd: '%s'\r\n", cmd);
+  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -87,23 +159,47 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+   led_set(0);
+   log_printf("\r\n[STM] boot. link USART2 9600 8N1 (PA2/PA3), log USART1 115200\r\n");
+   HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
+   uint32_t last_errors = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  while (rb_tail != rb_head) {
+	        char c = (char)rb[rb_tail];
+	        rb_tail = (rb_tail + 1) % RB_SIZE;
+
+	        if (c == '\r') continue;
+	        if (c == '\n') {
+	          line[line_len] = '\0';
+	          handle_command(line);
+	          line_len = 0;
+	        } else if (line_len < sizeof(line) - 1) {
+	          line[line_len++] = c;
+	        } else {
+	          line_len = 0;
+	        }
+	      }
+
+	      if (link_errors != last_errors) {
+	        last_errors = link_errors;
+	        log_printf("[STM] UART error #%lu (baud/parity mismatch? noise?)\r\n",
+	                   (unsigned long)last_errors);
+	      }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
   }
   /* USER CODE END 3 */
 }
-
 /**
   * @brief System Clock Configuration
   * @retval None
