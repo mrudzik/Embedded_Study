@@ -81,10 +81,6 @@
 			"path": "_Homework_4_3/I2C_Display"
 		},
 		{
-			"name": "stm32_platformio_test",
-			"path": "_Homework_4_1/stm32_platformio_test"
-		},
-		{
 			"name": "ESP32_UART_realPractice",
 			"path": "_Homework_4_1/ESP32_UART_realPractice"
 		}
