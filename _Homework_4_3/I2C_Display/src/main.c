@@ -21,11 +21,11 @@ static const char *TAG = "clock";
 
 static const ds1307_time_t new_time = {
     .sec   = 0,
-    .min   = 30,
-    .hour  = 12,
+    .min   = 38,
+    .hour  = 10,
     .dow   = 1,
-    .day   = 17,
-    .month = 8,
+    .day   = 9,
+    .month = 11,
     .year  = 2026,
 };
 
@@ -53,17 +53,26 @@ static void show_text(const char *str)
 
 void app_main(void)
 {
+
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    ESP_LOGI(TAG, "Дочекались прогрузки");
+
+
     i2c_master_bus_handle_t bus = i2c_bus_init();
 
     oled_init(bus, OLED_ADDR);      
     ESP_ERROR_CHECK(ds1307_init(bus));
 
-    bool running;
+
+
+    bool running = false;
     ESP_ERROR_CHECK(ds1307_is_running(&running));
     if (!running) {
         ESP_ERROR_CHECK(ds1307_set_time(&new_time));
         ESP_LOGI(TAG, "Годинник стояв — час встановлено");
     }
+    
+
 
     ds1307_time_t t;
     int  last_sec = -1;
@@ -71,9 +80,11 @@ void app_main(void)
 
     while (1)
     {
+
+
         if (ds1307_get_time(&t) == ESP_OK)
         {
-            if (t.sec != last_sec)
+            // if (t.sec != last_sec)
             {
                 last_sec = t.sec;
 
@@ -90,6 +101,6 @@ void app_main(void)
             last_sec = -1;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

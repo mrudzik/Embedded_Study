@@ -27,3 +27,4 @@ esp_err_t ds1307_set_time(const ds1307_time_t *time);
 esp_err_t ds1307_get_time(ds1307_time_t *time);
 
 esp_err_t ds1307_is_running(bool *running);
+esp_err_t ds1307_start_clock(i2c_master_dev_handle_t dev_handle);

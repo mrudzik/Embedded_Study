@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EMB_15 — MQTT Monitor</title>
+  <style>
+    :root {font-family: system-ui, -apple-system, Segoe UI, sans-serif; color: #12253d; background: #eff4f9;}
+    * {box-sizing: border-box;}
+    body {max-width: 760px; margin: 35px auto; padding: 0 16px;}
+    h1 {margin-bottom: 8px; font-size: 27px;}
+    p {color: #4c6178; line-height: 1.5;}
+    .panel {background: white; border: 1px solid #dce5ed; border-radius: 14px;
+            padding: 20px; margin: 16px 0; box-shadow: 0 5px 18px #09233a0d;}
+    label {display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px;}
+    input {width: 100%; padding: 12px; font: inherit; border: 1px solid #a4b6c7; border-radius: 8px;}
+    button {font: inherit; font-weight: 650; cursor: pointer; border: 0;
+            border-radius: 9px; padding: 11px 16px; background: #1d5ea6; color: white;}
+    button.secondary {background: #e3eaf2; color: #18364d;}
+    button.on {background: #0f8a64;}
+    button.off {background: #bd4b4b;}
+    button:disabled {opacity: .45; cursor: not-allowed;}
+    .actions {display: flex; gap: 8px; flex-wrap: wrap; margin-top: 13px;}
+    .pill {display: inline-block; background: #eef1f5; border-radius: 20px;
+           padding: 6px 12px; font-weight: 700; margin: 10px 0;}
+    .stats {display: grid; grid-template-columns: 1fr 1fr; gap: 12px;}
+    .stat {background:#f3f6fa; padding: 12px; border-radius: 10px;}
+    .stat strong {display:block; font-size:28px; margin-top:6px;}
+    .device-state.online {color:#0f8a64;}
+    .device-state.offline {color:#bd4b4b;}
+    .device-state.unknown {color:#526276;}
+    code {font-size: 13px; overflow-wrap: anywhere;}
+    #log {height:220px; overflow:auto; background:#0d1d2b; color:#daf6ec;
+          border-radius: 9px; padding: 14px; font: 12px/1.65 Consolas, monospace;
+          white-space: pre-wrap; overflow-wrap: anywhere;}
+    .small {font-size: 12px;}
+  </style>
+</head>
+<body>
+  <h1>MQTT Monitor</h1>
+  <p>EMB_15 • простий MQTT-клієнт у браузері. Працює через WebSocket Secure.</p>
+
+  <section class="panel">
+    <label for="prefix">Topic prefix — скопіюйте з ESP32 Monitor</label>
+    <input id="prefix" value="emb15/lesson01" spellcheck="false">
+    <div class="actions">
+      <button id="connect">Підключитися</button>
+      <button class="secondary" id="disconnect" disabled>Відключитися</button>
+    </div>
+    <div class="pill" id="status">Не підключено</div>
+    <p class="small">Broker: <code>wss://broker.emqx.io:8084/mqtt</code></p>
+  </section>
+
+  <section class="panel">
+    <h2>Дані від ESP32</h2>
+    <div class="stats">
+      <div class="stat">Лічильник<strong id="counter">—</strong></div>
+      <div class="stat">Світлодіод<strong id="led">—</strong></div>
+      <div class="stat">Статус ESP32<strong id="device-status" class="device-state unknown">Невідомо</strong></div>
+    </div>
+    <p class="small">SUBSCRIBE: <code id="telemetry-topic">—</code></p>
+    <p class="small">SUBSCRIBE (LWT): <code id="status-topic">—</code></p>
+  </section>
+
+  <section class="panel">
+    <h2>Керування LED</h2>
+    <div class="actions">
+      <button class="on" id="on" disabled>Увімкнути — ON</button>
+      <button class="off" id="off" disabled>Вимкнути — OFF</button>
+    </div>
+    <p class="small">PUBLISH: <code id="cmd-topic">—</code></p>
+  </section>
+
+  <section class="panel">
+    <h2>Журнал повідомлень</h2>
+    <div id="log" role="log" aria-live="polite"></div>
+  </section>
+
+  <!-- MQTT.js browser build, loaded from CDN (internet is required). -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    'use strict';
+    const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+    const $ = id => document.getElementById(id);
+    let client = null;
+    let prefix = '';
+
+    function log(text) {
+      const line = `[${new Date().toLocaleTimeString('uk-UA')}] ${text}`;
+      $('log').textContent += line + '\n';
+      $('log').scrollTop = $('log').scrollHeight;
+    }
+    function state(text, connected) {
+      $('status').textContent = text;
+      $('on').disabled = !connected;
+      $('off').disabled = !connected;
+      $('connect').disabled = connected || Boolean(client);
+      $('disconnect').disabled = !client;
+    }
+    // Стан ESP32 визначаємо лише за повідомленнями Topic /status.
+    // Втрата зв'язку браузера з брокером НЕ означає, що ESP32 offline.
+    function setDeviceStatus(value, kind = 'unknown') {
+      $('device-status').textContent = value;
+      $('device-status').className = 'device-state ' + kind;
+    }
+    function updateTopics() {
+      $('telemetry-topic').textContent = prefix + '/telemetry';
+      $('status-topic').textContent = prefix + '/status';
+      $('cmd-topic').textContent = prefix + '/cmd';
+    }
+    function connect() {
+      if (typeof mqtt === 'undefined') {
+        log('MQTT.js не завантажено. Перевірте доступ до CDN.');
+        return;
+      }
+      if (client) {
+        client.end(true);
+        client = null;
+      }
+      prefix = $('prefix').value.trim().replace(/\/+$/, '');
+      if (!/^emb15\/[A-Za-z0-9_-]+$/.test(prefix)) {
+        log('Вкажіть prefix із Monitor ESP32, наприклад emb15/A1B2C3.');
+        return;
+      }
+      updateTopics();
+      setDeviceStatus('Очікування…');
+      $('counter').textContent = '—';
+      $('led').textContent = '—';
+      $('connect').disabled = true;
+      $('disconnect').disabled = false;
+      state('Підключення…', false);
+      log('CONNECT ' + brokerUrl);
+
+      const thisClient = mqtt.connect(brokerUrl, {
+        clientId: 'emb15-web-' + Math.random().toString(16).slice(2, 12),
+        clean: true,
+        reconnectPeriod: 2000,
+        connectTimeout: 10000,
+        protocolVersion: 4
+      });
+      client = thisClient;
+      state('Підключення…', false);
+
+      thisClient.on('connect', () => {
+        if (client !== thisClient) return;
+        state('З’єднано', true);
+        log('CONNECTED');
+        thisClient.subscribe(prefix + '/telemetry', {qos: 0}, err => {
+          log(err ? 'SUBSCRIBE ERROR: ' + err.message
+                  : 'SUBSCRIBED ' + prefix + '/telemetry');
+        });
+        // Підписка на online/offline, зокрема retained-повідомлення брокера.
+        thisClient.subscribe(prefix + '/status', {qos: 1}, err => {
+          log(err ? 'STATUS SUBSCRIBE ERROR: ' + err.message
+                  : 'SUBSCRIBED ' + prefix + '/status');
+        });
+      });
+      thisClient.on('message', (topic, payload) => {
+        if (client !== thisClient) return;
+        const text = payload.toString();
+
+        // /status: ESP32 публікує online; брокер публікує offline через LWT.
+        if (topic === prefix + '/status') {
+          const value = text.trim().toLowerCase();
+          if (value === 'online') setDeviceStatus('ONLINE', 'online');
+          else if (value === 'offline') setDeviceStatus('OFFLINE', 'offline');
+          else setDeviceStatus('Невідомо');
+          log('STATUS ' + topic + ' : ' + text);
+          return;
+        }
+
+        if (topic !== prefix + '/telemetry') return;
+        log('RECEIVED ' + topic + ' : ' + text);
+        try {
+          const json = JSON.parse(text);
+          $('counter').textContent = json.counter ?? '—';
+          $('led').textContent = typeof json.led === 'boolean'
+            ? (json.led ? 'ON' : 'OFF') : '—';
+        } catch (err) { log('Некоректний JSON: ' + err.message); }
+      });
+      thisClient.on('reconnect', () => {
+        if (client !== thisClient) return;
+        state('Повторне підключення…', false);
+        setDeviceStatus('Невідомо');
+        log('RECONNECTING');
+      });
+      thisClient.on('close', () => {
+        if (client !== thisClient) return;
+        state('З’єднання втрачено', false);
+        setDeviceStatus('Невідомо');
+      });
+      thisClient.on('error', err => {
+        if (client !== thisClient) return;
+        log('ERROR: ' + err.message);
+      });
+    }
+    function disconnect() {
+      if (client) {
+        const oldClient = client;
+        client = null;
+        oldClient.end(true);
+        log('DISCONNECTED');
+      }
+      $('connect').disabled = false;
+      $('disconnect').disabled = true;
+      state('Не підключено', false);
+      setDeviceStatus('Невідомо');
+    }
+    function command(value) {
+      if (!client || !client.connected) return;
+      const topic = prefix + '/cmd';
+      client.publish(topic, value, {qos: 0, retain: false}, err => {
+        if (err) log('PUBLISH ERROR: ' + err.message);
+        else log('PUBLISH ' + topic + ' : ' + value);
+      });
+    }
+    $('connect').addEventListener('click', connect);
+    $('disconnect').addEventListener('click', disconnect);
+    $('on').addEventListener('click', () => command('ON'));
+    $('off').addEventListener('click', () => command('OFF'));
+    log('Вставте prefix з ESP32 Monitor та натисніть «Підключитися».');
+  </script>
+</body>
+</html>

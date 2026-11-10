@@ -2,6 +2,14 @@
 
 #include "ds1307.h"
 #include "esp_log.h"
+// #include "freertos/FreeRTOS.h"
+// #include "freertos/task.h"
+
+
+#define DS1307_REG_SEC   0x00
+#define DS1307_CH_BIT    (1 << 7)
+
+
 
 static const char *TAG = "ds1307";
 
@@ -24,6 +32,9 @@ esp_err_t ds1307_init(i2c_master_bus_handle_t bus)
     err = i2c_master_probe(bus, DS1307_ADDR, 100);
     if (err == ESP_OK)
         ESP_LOGI(TAG, "RTC знайдено на 0x%02X", DS1307_ADDR);
+
+    // ds1307_start_clock(s_rtc);
+
     return err;
 }
 
@@ -77,3 +88,51 @@ esp_err_t ds1307_is_running(bool *running)
     *running = (sec & 0x80) == 0;
     return ESP_OK;
 }
+
+
+// esp_err_t ds1307_start_clock(i2c_master_dev_handle_t dev_handle) 
+// {
+//     uint8_t reg_addr = DS1307_REG_SEC;
+//     uint8_t seconds_reg_val = 0;
+//     esp_err_t err;
+
+//     // 1. Зчитуємо поточне значення регістру секунд (0x00)
+//     err = i2c_master_transmit_receive(dev_handle, &reg_addr, 1, &seconds_reg_val, 1, -1);
+//     if (err != ESP_OK) {
+//         ESP_LOGE(TAG, "Помилка читання регістру секунд: %s", esp_err_to_name(err));
+//         return err;
+//     }
+
+//     // Перевіряємо, чи біт CH взагалі встановлений (дорівнює 1)
+//     if (seconds_reg_val & DS1307_CH_BIT) {
+//         ESP_LOGI(TAG, "Генератор зупинено (CH=1). Запускаємо...");
+
+//         // 2. Модифікуємо значення: скидаємо 7-й біт в 0
+//         seconds_reg_val &= ~DS1307_CH_BIT;
+
+//         // 3. Записуємо оновлене значення назад. 
+//         // Потрібно надіслати спочатку адресу регістру (0x00), а потім саме значення.
+//         uint8_t write_buf[2] = { DS1307_REG_SEC, seconds_reg_val };
+        
+//         err = i2c_master_transmit(dev_handle, write_buf, 2, -1);
+//         if (err != ESP_OK) {
+//             ESP_LOGE(TAG, "Помилка запису в регістр секунд: %s", esp_err_to_name(err));
+//             return err;
+//         }
+//         ESP_LOGI(TAG, "Генератор успішно запущено (CH=0)!");
+//     } else {
+//         ESP_LOGI(TAG, "Генератор вже працює (CH=0). Скидання не потрібне.");
+//     }
+
+
+//     // Зупиняємо
+//     uint8_t stop_buf[] = { 0x00, 0x80 }; // CH = 1
+//     i2c_master_transmit(dev_handle, stop_buf, 2, -1);
+//     vTaskDelay(pdMS_TO_TICKS(100));
+
+//     // Запускаємо
+//     uint8_t start_buf[] = { 0x00, 0x00 }; // CH = 0, Sec = 0
+//     i2c_master_transmit(dev_handle, start_buf, 2, -1);
+
+//     return ESP_OK;
+// }

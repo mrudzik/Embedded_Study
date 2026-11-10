@@ -83,6 +83,10 @@
 		{
 			"name": "ESP32_UART_realPractice",
 			"path": "_Homework_4_1/ESP32_UART_realPractice"
+		},
+		{
+			"name": "ESP32_MQTT",
+			"path": "_Homework_4_9/ESP32_MQTT"
 		}
 	],
 	"settings": {}
